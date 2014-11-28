@@ -53,9 +53,10 @@ public class MainActivity extends ActionBarActivity {
 
         ShowHideManager manager = new ShowHideManager();
 
-        manager.addView(toolbar, ShowHideManager.HIDE_UP);
-        manager.addView(img, ShowHideManager.HIDE_UP);
-        manager.addView(btmMenu, ShowHideManager.HIDE_DOWN);
+
+        manager.setActionBar(toolbar);
+        manager.setTabs(img);
+        manager.setBtmMenu(btmMenu);
 
         sample.setOnScrollListener(manager.getScrollListener());
 

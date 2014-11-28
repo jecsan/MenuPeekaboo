@@ -1,19 +1,16 @@
 package library;
 
 import android.animation.Animator;
+import android.animation.ValueAnimator;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.AbsListView;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class ShowHideManager {
 
     private boolean isAnimating;
-    private List<ShowHideView> showHideViews;
-
     private static final int SCROLL_TO_TOP = - 1;
     private static final int SCROLL_DIRECTION_CHANGE_THRESHOLD = 5;
     private static final int SCROLL_TO_BOTTOM = 1;
@@ -22,24 +19,39 @@ public class ShowHideManager {
     private int lastScrollDirection;
     private int lastScrollPos;
 
-    public static final int HIDE_UP = 5;
-    public static final int HIDE_DOWN = 6;
+    private boolean mIs1stStage;
+    private boolean allHidden;
 
+    private View actionBar;
+    private View tabs;
+    private View btmMenu;
 
-    /**
-     *
-     * @param v {@link android.view.View} to be hidden/shown
-     * @param hideAction use {@link ShowHideManager#HIDE_DOWN} or {@link ShowHideManager#HIDE_UP}
-     */
-    public void addView(View v, int hideAction){
-        ShowHideView showHideView = new ShowHideView(v,v.getHeight(),v.getTop(),v.getBottom());
-        showHideView.setAction(hideAction);
-        showHideViews.add(showHideView);
+    public View getActionBar() {
+        return actionBar;
     }
 
-    public ShowHideManager(){
-        showHideViews = new ArrayList<>();
+    public void setActionBar(View actionBar) {
+        this.actionBar = actionBar;
     }
+
+    public View getTabs() {
+        return tabs;
+    }
+
+    public void setTabs(View tabs) {
+        this.tabs = tabs;
+    }
+
+    public View getBtmMenu() {
+        return btmMenu;
+    }
+
+    public void setBtmMenu(View btmMenu) {
+        this.btmMenu = btmMenu;
+    }
+
+    private int tabDefaultHeight;
+
 
 
     public AbsListView.OnScrollListener getScrollListener(){
@@ -72,7 +84,9 @@ public class ShowHideManager {
             }
 
 
-            if(Math.abs(newScrollPos - lastScrollPos) >= SCROLL_DIRECTION_CHANGE_THRESHOLD){
+            int scrollRate = Math.abs(newScrollPos - lastScrollPos);
+
+            if(scrollRate >= SCROLL_DIRECTION_CHANGE_THRESHOLD){
                 onScrollChanged(lastScrollPos, newScrollPos);
             }
 
@@ -113,6 +127,7 @@ public class ShowHideManager {
     }
 
 
+
     private Animator.AnimatorListener animationListener = new Animator.AnimatorListener() {
         @Override
         public void onAnimationStart(Animator animation) {
@@ -126,7 +141,7 @@ public class ShowHideManager {
 
         @Override
         public void onAnimationCancel(Animator animation) {
-
+            isAnimating = false;
         }
 
         @Override
@@ -136,55 +151,116 @@ public class ShowHideManager {
     };
 
 
-    public void showViews(){
-        if(!isAnimating){
-            for(ShowHideView view : showHideViews){
-                switch (view.getAction()){
-                    case HIDE_UP:
-                        view.getView().animate().translationY(view.getTop())
-                                .setDuration(HIDESHOW_SPEED)
-                                .alpha(1)
-                                .setInterpolator(new DecelerateInterpolator()).setListener(animationListener);
-                        break;
 
-                    case HIDE_DOWN:
-                        view.getView().animate().translationY(-view.getHeight())
-                                .setDuration(HIDESHOW_SPEED)
-                                .setInterpolator(new DecelerateInterpolator());
-                        break;
 
-                    default:
-                        break;
-                }
-            }
+    private void translateView(boolean up, View view){
+        int val = up ? 1: 0;
+        if(view != null){
+            view.animate().translationY(val)
+                    .setDuration(HIDESHOW_SPEED)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setListener(animationListener);
         }
+    }
 
+
+
+    private void restoreTabHeight(){
+        if(tabDefaultHeight != 0 && tabs != null){
+            ViewGroup.LayoutParams layoutParams = tabs.getLayoutParams();
+            layoutParams.height = tabDefaultHeight;
+            tabs.setLayoutParams(layoutParams);
+        }
 
     }
 
-    public void hideViews(){
-        if(!isAnimating){
-            for(ShowHideView view : showHideViews){
-                switch (view.getAction()){
-                    case HIDE_UP:
-                        view.getView().animate().translationY(-view.getView().getBottom())
-                                .setDuration(HIDESHOW_SPEED)
-                                .setInterpolator(new DecelerateInterpolator());
-                        break;
 
-                    case HIDE_DOWN:
-                        view.getView().animate().translationY(view.getView().getHeight())
-                                .setDuration(HIDESHOW_SPEED)
-                                .setInterpolator(new DecelerateInterpolator());
-                        break;
-
-                    default:
-                        break;
+    public void animateHeight(final View view, int from, int to, final boolean hide) {
+        if(view != null){
+            ValueAnimator anim = ValueAnimator.ofInt(from, to);
+            anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
+                @Override
+                public void onAnimationUpdate(ValueAnimator valueAnimator) {
+                    int val = (Integer) valueAnimator.getAnimatedValue();
+                    ViewGroup.LayoutParams layoutParams = view.getLayoutParams();
+                    layoutParams.height = val;
+                    view.setLayoutParams(layoutParams);
                 }
-            }
+            });
+            anim.setDuration(HIDESHOW_SPEED);
+            anim.addListener(new Animator.AnimatorListener() {
+                @Override
+                public void onAnimationStart(Animator animation) {
+                    isAnimating = true;
+                }
+
+                @Override
+                public void onAnimationEnd(Animator animation) {
+
+                    mIs1stStage = hide;
+                    isAnimating = false;
+                }
+
+                @Override
+                public void onAnimationCancel(Animator animation) {
+                    isAnimating = false;
+                }
+
+                @Override
+                public void onAnimationRepeat(Animator animation) {
+
+                }
+            });
+            anim.start();
         }
 
+    }
 
+    public void showViews(){
+        if(!isAnimating){
+
+            if(allHidden){
+                restoreTabHeight();
+                translateView(false,actionBar);
+                translateView(false, tabs);
+                translateView(true, btmMenu);
+                mIs1stStage = false;
+                allHidden = false;
+            }
+            else if(mIs1stStage){
+                translateView(false,actionBar);
+                translateView(true, btmMenu);
+                animateHeight(tabs, 0, tabDefaultHeight, false);
+            }
+
+
+            mIs1stStage = false;
+        }
+    }
+
+
+    public void hideViews(){
+        if(!isAnimating){
+            if(mIs1stStage){
+                tabs.animate().translationY(-tabs.getBottom())
+                        .setDuration(HIDESHOW_SPEED)
+                        .setInterpolator(new DecelerateInterpolator());
+                actionBar.animate().translationY(-tabs.getBottom())
+                        .setDuration(HIDESHOW_SPEED)
+                        .setInterpolator(new DecelerateInterpolator());
+                allHidden = true;
+
+            }
+            else {
+                if(tabs.getHeight() != 0){
+                    tabDefaultHeight = tabs.getHeight();
+                }
+                animateHeight(tabs, tabDefaultHeight, 0, true);
+                btmMenu.animate().translationY(btmMenu.getHeight())
+                        .setDuration(HIDESHOW_SPEED)
+                        .setInterpolator(new DecelerateInterpolator());
+            }
+        }
     }
 
 }
