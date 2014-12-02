@@ -1,31 +1,33 @@
 package sample;
 
 import android.os.Bundle;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
+import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
-import android.widget.ArrayAdapter;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 
 import com.dyoed.menupeekaboo.R;
 
 import java.util.ArrayList;
-import java.util.List;
 
-import library.ShowHideManager;
+import library.BaseTabPagerAdapter;
+import library.ShowHideController;
+import library.SlidingTabLayout;
 
 
 public class MainActivity extends ActionBarActivity {
 
     private Toolbar toolbar;
-    private ListView sample;
-    private ImageView img;
     private LinearLayout btmMenu;
-
+    private ViewPager viewPager;
+    private BaseTabPagerAdapter baseTabPagerAdapter;
+    private SlidingTabLayout slidingTabLayout;
+    ShowHideController manager;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         getWindow().requestFeature(Window.FEATURE_ACTION_BAR_OVERLAY);
@@ -34,38 +36,94 @@ public class MainActivity extends ActionBarActivity {
 
         toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        sample = (ListView) findViewById(R.id.listview_sample);
-        img = (ImageView) findViewById(R.id.image);
         btmMenu = (LinearLayout) findViewById(R.id.btm_menu);
+        viewPager = (ViewPager) findViewById(R.id.tab_pager);
+        slidingTabLayout = (SlidingTabLayout) findViewById(R.id.sliding_tabs);
 
-        //Create sample data for listview
-        List<String> list = new ArrayList<>();
-        for(int i=0; i<100; i++){
-            list.add("test test");
-        }
+        baseTabPagerAdapter = new BaseTabPagerAdapter(getSupportFragmentManager()) {
+            @Override
+            protected void initFragments() {
+                fragmentsList = new ArrayList<Fragment>();
+                fragmentsList.add(new FragmentSample());
+                fragmentsList.add(new FragmentSample());
+                fragmentsList.add(new FragmentSample());
+            }
 
-        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<String>(this,android.R.layout.simple_list_item_1, list);
-        arrayAdapter.addAll(list);
-        sample.setAdapter(arrayAdapter);
+            @Override
+            protected void initSaveFragments() {
+                FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
+                transaction.add(new FragmentSample(), "1");
+                transaction.add(new FragmentSample(), "1");
+                transaction.add(new FragmentSample(), "1");
+                transaction.commit();
 
-        sample.addHeaderView(getLayoutInflater().inflate(R.layout.empty, sample, false));
+            }
+
+            @Override
+            protected void initTabsList() {
+                tabNames = new ArrayList<String>();
+                tabNames.add("Trending");
+                tabNames.add("Discover");
+                tabNames.add("Nearby");
+
+                drawableIds = new ArrayList<Integer>();
+                drawableIds.add(android.R.drawable.ic_btn_speak_now);
+                drawableIds.add(android.R.drawable.ic_btn_speak_now);
+                drawableIds.add(android.R.drawable.ic_btn_speak_now);
+            }
+
+            @Override
+            public Fragment getItem(int position) {
+                switch (position){
+                    case 0:
+                        return fragmentsList.get(0);
+                    case 1:
+                        return fragmentsList.get(1);
+                    case 2:
+                        return fragmentsList.get(2);
+                }
+                return null;
+            }
+        };
+
+        viewPager.setAdapter(baseTabPagerAdapter);
+        slidingTabLayout.setViewPager(viewPager);
 
 
-        ShowHideManager manager = new ShowHideManager();
-
-
+        manager = new ShowHideController();
         manager.setActionBar(toolbar);
-        manager.setTabs(img);
+        manager.setTabs(slidingTabLayout);
         manager.setBtmMenu(btmMenu);
 
-        sample.setOnScrollListener(manager.getScrollListener());
+
+        slidingTabLayout.setOnPageChangeListener(new ViewPager.OnPageChangeListener() {
+            @Override
+            public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+               manager.forceShowViews();
+            }
+
+            @Override
+            public void onPageSelected(int position) {
+                manager.setAnimating(true);
+                ((FragmentSample)baseTabPagerAdapter.getItem(position)).onPageSelected();
+                manager.setAnimating(false);
+            }
+
+            @Override
+            public void onPageScrollStateChanged(int state) {
+
+            }
+        });
 
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
+    public int getProgressBarOffset(){
+        return slidingTabLayout.getBottom();
+    }
 
+
+    public ShowHideController getManager() {
+        return manager;
     }
 
 

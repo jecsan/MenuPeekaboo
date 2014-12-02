@@ -8,11 +8,11 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.AbsListView;
 
-public class ShowHideManager {
+public class ShowHideController {
 
     private boolean isAnimating;
     private static final int SCROLL_TO_TOP = - 1;
-    private static final int SCROLL_DIRECTION_CHANGE_THRESHOLD = 5;
+    private static final int SCROLL_THRESHHOLD = 5;
     private static final int SCROLL_TO_BOTTOM = 1;
     private static final int HIDESHOW_SPEED = 200;
 
@@ -53,7 +53,6 @@ public class ShowHideManager {
     private int tabDefaultHeight;
 
 
-
     public AbsListView.OnScrollListener getScrollListener(){
         return scrollListener;
     }
@@ -86,8 +85,8 @@ public class ShowHideManager {
 
             int scrollRate = Math.abs(newScrollPos - lastScrollPos);
 
-            if(scrollRate >= SCROLL_DIRECTION_CHANGE_THRESHOLD){
-                onScrollChanged(lastScrollPos, newScrollPos);
+            if(scrollRate >= SCROLL_THRESHHOLD){
+                onChangeScroll(lastScrollPos, newScrollPos);
             }
 
             lastScrollPos = newScrollPos;
@@ -108,7 +107,7 @@ public class ShowHideManager {
 
 
 
-    private void onScrollChanged(int oldScroll, int newScroll){
+    private void onChangeScroll(int oldScroll, int newScroll){
         int newScrollDirection;
 
         if(newScroll < oldScroll) {
@@ -163,6 +162,16 @@ public class ShowHideManager {
         }
     }
 
+    private void translateView(boolean up, View view, int duration){
+        int val = up ? 1: 0;
+        if(view != null){
+            view.animate().translationY(val)
+                    .setDuration(duration)
+                    .setInterpolator(new DecelerateInterpolator())
+                    .setListener(animationListener);
+        }
+    }
+
 
 
     private void restoreTabHeight(){
@@ -177,6 +186,7 @@ public class ShowHideManager {
 
     public void animateHeight(final View view, int from, int to, final boolean hide) {
         if(view != null){
+
             ValueAnimator anim = ValueAnimator.ofInt(from, to);
             anim.addUpdateListener(new ValueAnimator.AnimatorUpdateListener() {
                 @Override
@@ -216,6 +226,10 @@ public class ShowHideManager {
 
     }
 
+    public void setAnimating(boolean animating){
+        isAnimating = animating;
+    }
+
     public void showViews(){
         if(!isAnimating){
 
@@ -238,6 +252,26 @@ public class ShowHideManager {
         }
     }
 
+    public void forceShowViews(){
+
+        if(mIs1stStage){
+            animateHeight(tabs, 0, tabDefaultHeight, false);
+            translateView(true, btmMenu, 100);
+            mIs1stStage = false;
+        }
+
+        if(allHidden){
+            restoreTabHeight();
+            translateView(false,actionBar, 100);
+            translateView(false, tabs,100);
+            translateView(true, btmMenu, 100);
+            allHidden = false;
+        }
+
+        lastScrollDirection = SCROLL_TO_TOP;
+
+    }
+
 
     public void hideViews(){
         if(!isAnimating){
@@ -245,7 +279,7 @@ public class ShowHideManager {
                 tabs.animate().translationY(-tabs.getBottom())
                         .setDuration(HIDESHOW_SPEED)
                         .setInterpolator(new DecelerateInterpolator());
-                actionBar.animate().translationY(-tabs.getBottom())
+                actionBar.animate().translationY(-actionBar.getBottom())
                         .setDuration(HIDESHOW_SPEED)
                         .setInterpolator(new DecelerateInterpolator());
                 allHidden = true;
