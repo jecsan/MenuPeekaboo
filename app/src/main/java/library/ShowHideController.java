@@ -2,6 +2,7 @@ package library;
 
 import android.animation.Animator;
 import android.animation.ValueAnimator;
+import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,7 +10,6 @@ import android.view.animation.DecelerateInterpolator;
 import android.widget.AbsListView;
 
 public class ShowHideController {
-
     private boolean isAnimating;
     private static final int SCROLL_TO_TOP = - 1;
     private static final int SCROLL_THRESHHOLD = 5;
@@ -25,6 +25,8 @@ public class ShowHideController {
     private View actionBar;
     private View tabs;
     private View btmMenu;
+
+    private int SCROLL_COUNTER;
 
     public View getActionBar() {
         return actionBar;
@@ -53,15 +55,18 @@ public class ShowHideController {
     private int tabDefaultHeight;
 
 
-    public AbsListView.OnScrollListener getScrollListener(){
+    public AbsListView.OnScrollListener getListViewScrollListener(){
         return scrollListener;
+    }
+
+    public RecyclerView.OnScrollListener getOnScrollListener(){
+        return  onScrollListener;
     }
 
 
     private AbsListView.OnScrollListener scrollListener = new AbsListView.OnScrollListener() {
         @Override
         public void onScrollStateChanged(AbsListView view, int scrollState) {
-
         }
 
         @Override
@@ -77,10 +82,11 @@ public class ShowHideController {
                 newScrollPos = -topChild.getTop() + view.getFirstVisiblePosition() * topChild.getHeight();
             }
 
-            if(newScrollPos <= 5){
-                showViews();
-                return;
-            }
+//            if(newScrollPos <= 5){
+//                lastScrollPos = newScrollPos;
+//                showViews();
+//                return;
+//            }
 
 
             int scrollRate = Math.abs(newScrollPos - lastScrollPos);
@@ -102,6 +108,29 @@ public class ShowHideController {
         @Override
         public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
             super.onScrolled(recyclerView, dx, dy);
+            int newScrollPos = 0;
+            View topChild = recyclerView.getChildAt(0);
+
+            if(topChild == null){
+                newScrollPos = 0;
+            }
+            else{
+                newScrollPos = -topChild.getTop() + ((LinearLayoutManager)recyclerView.getLayoutManager()).findFirstVisibleItemPosition() * topChild.getHeight();
+            }
+
+//            if(newScrollPos <= 5){
+//                lastScrollPos = newScrollPos;
+//                showViews();
+//                return;
+
+
+            int scrollRate = Math.abs(newScrollPos - lastScrollPos);
+
+            if(scrollRate >= SCROLL_THRESHHOLD){
+                onChangeScroll(lastScrollPos, newScrollPos);
+            }
+
+            lastScrollPos = newScrollPos;
         }
     };
 
@@ -110,13 +139,28 @@ public class ShowHideController {
     private void onChangeScroll(int oldScroll, int newScroll){
         int newScrollDirection;
 
-        if(newScroll < oldScroll) {
+        if(newScroll <= oldScroll) {
+            if(lastScrollDirection != SCROLL_TO_TOP){
+                SCROLL_COUNTER = 0;
+            }
+            SCROLL_COUNTER++;
             newScrollDirection = SCROLL_TO_TOP;
-            showViews();
+            if(SCROLL_COUNTER == 2){
+                showViews();
+                SCROLL_COUNTER = 0;
+            }
 
         } else {
+            if(lastScrollDirection != SCROLL_TO_BOTTOM){
+                SCROLL_COUNTER = 0;
+            }
+            SCROLL_COUNTER++;
             newScrollDirection = SCROLL_TO_BOTTOM;
-            hideViews();
+            if(SCROLL_COUNTER == 2){
+                hideViews();
+                SCROLL_COUNTER = 0;
+            }
+
         }
 
         if(newScrollDirection != lastScrollDirection) {
@@ -296,5 +340,4 @@ public class ShowHideController {
             }
         }
     }
-
 }
